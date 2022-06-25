@@ -1,6 +1,8 @@
 const passport = require('passport');
 const GoogleStrategy = require("passport-google-oauth20");
 const User = require("../models/user-model");
+const LocalStrategy = require("passport-local");
+const bcrypt = require("bcrypt");
 
 passport.serializeUser((user, done) => {
     console.log("serializing user now");
@@ -14,6 +16,31 @@ passport.deserializeUser((_id, done) => {
         done(null, user);
     });
 })
+//比對(使用者輸入的密碼)與(資料庫中加密過的密碼)
+passport.use(
+    new LocalStrategy((username, password, done) => {
+      console.log(username, password);
+      User.findOne({ email: username })
+        .then(async (user) => {
+            if (!user) {
+                return done(null, false);
+            }
+            await bcrypt.compare(password, user.password, function (err, result) {
+                if (err) {
+                    return done(null, false);
+                }
+                if (!result) {
+                    return done(null, false);
+                } else {
+                    return done(null, user);
+                }
+            });
+        })
+      .catch((err) => {
+        return done(null, false);
+      })
+    })
+);
 
 passport.use(
     new GoogleStrategy({
@@ -23,7 +50,7 @@ passport.use(
     },
     (accessToken, refreshToken, profile, done) => {
         // passport callback
-        console.log(profile);
+        console.log("googleID: " + profile.id);
         //去資料庫搜尋是否有這個ID
         User.findOne({ googleID: profile.id }).then((foundUser) => {
             if (foundUser) {
@@ -34,6 +61,7 @@ passport.use(
                     name: profile.displayName,
                     googleID: profile.id,
                     thumbnail: profile.photos[0].value,
+                    email: profile.emails[0].value,
                 })
                 .save()
                 .then((newUser) => {
