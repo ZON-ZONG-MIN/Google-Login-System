@@ -7,6 +7,23 @@ router.get("/login", (req, res) => {
     res.render("login", { user: req.user });
 });
 
+router.post("/login", 
+    //登入失敗的反應
+    passport.authenticate("local", { 
+        failureRedirect: "/auth/login", 
+        failureFlash: "Wrong email or password." 
+    }),
+    (req, res) => {
+        if(req.session.returnTo) {
+            let newPath = req.session.returnTo;
+            req.session.returnTo = "";
+            res.redirect(newPath); // /profile/path
+        } else {
+            res.redirect("/profile");
+        }
+    }
+);
+
 router.get("/signup", (req, res) => {
     res.render("signup", { user: req.user });
 });
@@ -39,17 +56,6 @@ router.get("/logout", (req, res) => {
     res.redirect("/");
 });
 
-router.post("/login", 
-    //登入失敗的反應
-    passport.authenticate("local", { 
-        failureRedirect: "/auth/login", 
-        failureFlash: "Wrong email or password." 
-    }),
-    (req, res) => {
-        res.redirect("/profile");
-    }
-);
-
 router.get(
     "/google", 
     passport.authenticate("google", {
@@ -60,7 +66,13 @@ router.get(
 );
 
 router.get("/google/redirect", passport.authenticate("google"), (req, res) => {
-    res.redirect("/profile");
+    if(req.session.returnTo) {
+        let newPath = req.session.returnTo;
+        req.session.returnTo = "";
+        res.redirect(newPath);
+    } else {
+        res.redirect("/profile");
+    }
 });
 
 module.exports = router;
